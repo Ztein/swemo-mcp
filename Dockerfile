@@ -1,28 +1,20 @@
-# Start from a Python base image
-FROM python:3.12-slim
+FROM python:3.13-slim
 
-# Set the working directory
 WORKDIR /app
 
-# Copy only the relevant files first (for caching dependencies):
-#  - pyproject.toml
-#  - README.md (if needed for build)
-COPY pyproject.toml README.md ./
+# Install uv for fast dependency management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Upgrade pip and install build tooling
-RUN pip install --no-cache-dir --upgrade pip build
+# Copy project files
+COPY pyproject.toml uv.lock README.md ./
+COPY src/ src/
 
-# Copy the rest of your project
-COPY . ./
+# Install dependencies
+RUN uv sync --frozen --no-dev
 
-# Build the wheel
-RUN python -m build
+# Copy .env if present
+COPY .env* ./
 
-# Install the newly built wheel from the dist directory
-RUN pip install --no-cache-dir dist/*.whl
+EXPOSE 8809
 
-# Expose port 8000 (or whatever port your app runs on, if it does)
-EXPOSE 8000
-
-# The default command to run the server
-CMD ["swemo-mcp"]
+CMD ["uv", "run", "python", "-m", "swemo_mcp.server"]

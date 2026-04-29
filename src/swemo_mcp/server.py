@@ -2,12 +2,16 @@
 MCP Server for Riksbank policy data.
 """
 
+import os
 import sys
 import traceback
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator
 
+from dotenv import load_dotenv
 from mcp.server import FastMCP
+
+load_dotenv()
 
 from swemo_mcp.tools.monetary_policy_tools import (
     get_cpi_data,
@@ -47,14 +51,12 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
         file=sys.stderr,
     )
 
-    # (Optional) Pre-fetch or initialize Riksbank-specific resources here.
-    context_data: dict[str, Any] = {}  # Populate with any needed data
+    context_data: dict[str, Any] = {}
 
     print(
-        "[Swemo MCP Lifespan] Initialization complete. All data cached.",
+        "[Swemo MCP Lifespan] Initialization complete.",
         file=sys.stderr,
     )
-    print("[Swemo MCP Lifespan] Yielding context...", file=sys.stderr)
 
     try:
         yield context_data
@@ -77,10 +79,14 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
         print("[Swemo MCP] Shutting down.", file=sys.stderr)
 
 
+_host = os.environ.get("SWEMO_HOST", "0.0.0.0")
+_port = int(os.environ.get("SWEMO_PORT", "8809"))
+
 mcp = FastMCP(
-    title="Riksbank Monetary Policy Data MCP Server",
-    description="Access to Riksbank Riksbank Monetary Policy Data",
-    version="0.1.0",
+    name="swemo-mcp",
+    instructions="Access to Sveriges Riksbank monetary policy data.",
+    host=_host,
+    port=_port,
     lifespan=app_lifespan,
 )
 
@@ -118,12 +124,13 @@ def main() -> None:
     """
     Main entry point for Riksbank Monetary Policy Data MCP server.
     """
-    import sys
-    import traceback
-
-    print("[Swemo MCP] Starting server on stdio...", file=sys.stderr)
+    transport = os.environ.get("SWEMO_TRANSPORT", "streamable-http")
+    print(
+        f"[Swemo MCP] Starting server transport={transport} on {_host}:{_port}...",
+        file=sys.stderr,
+    )
     try:
-        mcp.run("stdio")
+        mcp.run(transport=transport)
         print("[Swemo MCP] Finished cleanly.", file=sys.stderr)
     except Exception as e:
         print(f"[Swemo MCP] EXCEPTION: {e}", file=sys.stderr)
