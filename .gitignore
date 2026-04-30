@@ -16,3 +16,6 @@ wheels/
 
 # Zed
 .zed
+
+# Local-only docs
+intric-system-prompt.md
